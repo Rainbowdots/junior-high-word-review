@@ -57,7 +57,6 @@
         { en: "baby sitter", zh: "保母" },
         { en: "waiter", zh: "服務生" },
         { en: "waitress", zh: "女服務生" },
-        { en: "assistant", zh: "助理" },
         { en: "servant", zh: "僕人" },
         { en: "cook", zh: "廚師（v. 煮）" }
       ]},
@@ -68,6 +67,8 @@
         { en: "vendor", zh: "小販" },
         { en: "salesman", zh: "推銷員" },
         { en: "businessman", zh: "商人" },
+        { en: "secretary", zh: "秘書" },
+        { en: "assistant", zh: "助理" },
         { en: "clerk", zh: "店員" },
         { en: "boss", zh: "老闆", tip: T_OWN }
       ]},
@@ -81,10 +82,9 @@
         { en: "fisherman", zh: "漁夫" }
       ]},
       { id: "life", name: "生活與其他", items: [
-        { en: "worker", zh: "工作者" },
+        { en: "worker", zh: "工人" },
         { en: "mailman", zh: "郵差" },
         { en: "housewife", zh: "家庭主婦" },
-        { en: "secretary", zh: "秘書" },
         { en: "guide", zh: "導遊（v. 引導）" },
         { en: "priest", zh: "牧師、神父" }
       ]}
