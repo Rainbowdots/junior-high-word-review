@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>單字複習</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1f2933;--mute:#6b7785;--line:#d9dee5;--accent:#2f6f9f;--accent-bg:#e6f0f7;--ok:#2e7d4f;--ok-bg:#e4f3ea;--bad:#c0392b;--bad-bg:#fbe9e7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.5}
+main{max-width:760px;margin:0 auto;padding:20px 14px 48px}
+h1{font-size:1.5rem;margin:8px 0 4px}
+h2{font-size:1.2rem;margin:4px 0 12px}
+.sub{color:var(--mute);margin:0 0 18px;font-size:.95rem}
+.crumb{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+button{font:inherit;color:inherit;cursor:pointer}
+.link{background:none;border:0;color:var(--accent);padding:6px 0;font-size:.95rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 12px;text-align:left;min-height:76px;display:flex;flex-direction:column;justify-content:space-between}
+.tile:hover{border-color:var(--accent)}
+.tile b{font-size:1.05rem}
+.tile small{color:var(--mute)}
+.tile.done{background:var(--ok-bg);border-color:#b9dec7}
+.tile.done small{color:var(--ok)}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0 18px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.col{display:flex;flex-direction:column;gap:8px}
+.card{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 30px 10px 12px;min-height:52px;display:flex;align-items:center;text-align:left;font-size:1rem;width:100%;word-break:break-word}
+.card.en{font-weight:600}
+.card.sel{border-color:var(--accent);background:var(--accent-bg)}
+.card.bad{border-color:var(--bad);background:var(--bad-bg);animation:shake .3s}
+.card.ok{border-color:#b9dec7;background:var(--ok-bg);color:var(--ok);opacity:.55;pointer-events:none}
+.q{position:absolute;top:50%;right:6px;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--mute);font-size:.78rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
+.tip{margin-top:14px;min-height:0;background:#fff8e6;border:1px solid #f0dca8;border-radius:10px;padding:10px 12px;font-size:.92rem;display:none}
+.tip.show{display:block}
+.status{color:var(--mute);font-size:.9rem;margin:2px 0 8px}
+.list{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:1fr 1.2fr;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row b{font-weight:600}
+.row small{grid-column:1/-1;color:var(--mute);font-size:.85rem}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 16px}
+.btn.alt{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+.foot{margin-top:28px;display:flex;justify-content:space-between;align-items:center;color:var(--mute);font-size:.9rem}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media(max-width:420px){.card{font-size:.95rem;padding:8px 28px 8px 10px}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+
+<script>window.WORDBANK = [];</script>
+<!-- 新增主題：在下面加一行 -->
+<script src="data/jobs.js"></script>
+
+<script>
+(function () {
+  var KEY = "wordreview.v1";
+  var app = document.getElementById("app");
+
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  var state = load();
+  function doneList(tid) { return state[tid] || []; }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function clear() { app.innerHTML = ""; window.scrollTo(0, 0); }
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  /* 首頁：主題 */
+  function home() {
+    clear();
+    app.appendChild(el("h1", null, "單字複習"));
+    app.appendChild(el("p", "sub", "選一個主題開始。"));
+    var g = el("div", "grid");
+    window.WORDBANK.forEach(function (t) {
+      var total = t.groups.length, n = doneList(t.id).length;
+      var b = el("button", "tile" + (n === total ? " done" : ""));
+      b.appendChild(el("b", null, t.title));
+      b.appendChild(el("small", null, "完成 " + n + " / " + total + " 組"));
+      b.onclick = function () { theme(t); };
+      g.appendChild(b);
+    });
+    app.appendChild(g);
+  }
+
+  /* 主題頁：語意組 */
+  function theme(t) {
+    clear();
+    var c = el("div", "crumb");
+    var back = el("button", "link", "← 單字複習");
+    back.onclick = home;
+    c.appendChild(back);
+    app.appendChild(c);
+    app.appendChild(el("h2", null, t.title));
+
+    var done = doneList(t.id);
+    var bar = el("div", "bar"), fill = el("i");
+    fill.style.width = (done.length / t.groups.length * 100) + "%";
+    bar.appendChild(fill);
+    app.appendChild(bar);
+
+    var g = el("div", "grid");
+    t.groups.forEach(function (grp) {
+      var isDone = done.indexOf(grp.id) >= 0;
+      var b = el("button", "tile" + (isDone ? " done" : ""));
+      b.appendChild(el("b", null, grp.name));
+      b.appendChild(el("small", null, grp.items.length + " 字" + (isDone ? " ✓ 已完成" : "")));
+      b.onclick = function () { round(t, grp); };
+      g.appendChild(b);
+    });
+    app.appendChild(g);
+
+    var foot = el("div", "foot");
+    foot.appendChild(el("span", null, "進度只存在這個瀏覽器"));
+    var reset = el("button", "link", "清除重來");
+    reset.onclick = function () {
+      if (confirm("清除「" + t.title + "」的完成紀錄？")) {
+        delete state[t.id]; save(state); theme(t);
+      }
+    };
+    foot.appendChild(reset);
+    app.appendChild(foot);
+  }
+
+  /* 配對 */
+  function round(t, grp) {
+    clear();
+    var c = el("div", "crumb");
+    var back = el("button", "link", "← " + t.title);
+    back.onclick = function () { theme(t); };
+    c.appendChild(back);
+    app.appendChild(c);
+    app.appendChild(el("h2", null, grp.name));
+
+    var total = grp.items.length, matched = 0;
+    var status = el("p", "status", "已配對 0 / " + total + "　點一個英文，再點對應的中文");
+    app.appendChild(status);
+
+    var items = grp.items.map(function (it, i) { return { en: it.en, zh: it.zh, tip: it.tip, i: i }; });
+    var cols = el("div", "cols");
+    var colL = el("div", "col"), colR = el("div", "col");
+    cols.appendChild(colL); cols.appendChild(colR);
+    app.appendChild(cols);
+    var tipBox = el("div", "tip");
+    app.appendChild(tipBox);
+
+    var selL = null, selR = null, busy = false;
+
+    function showTips(list) {
+      var seen = {}, out = [];
+      list.forEach(function (t) { if (t && !seen[t]) { seen[t] = 1; out.push(t); } });
+      if (!out.length) { tipBox.className = "tip"; return; }
+      tipBox.textContent = "💡 " + out.join("　");
+      tipBox.className = "tip show";
+    }
+
+    function makeCard(it, side) {
+      var b = el("button", "card " + side);
+      b.appendChild(document.createTextNode(side === "en" ? it.en : it.zh));
+      b.dataset.i = it.i;
+      if (it.tip) {
+        var q = el("span", "q", "?");
+        q.setAttribute("role", "button");
+        q.setAttribute("aria-label", "提示");
+        q.onclick = function (e) { e.stopPropagation(); showTips([it.tip]); };
+        b.appendChild(q);
+      }
+      b.onclick = function () { pick(b, it, side); };
+      return b;
+    }
+
+    function pick(b, it, side) {
+      if (busy) return;
+      var cur = side === "en" ? selL : selR;
+      if (cur) cur.b.classList.remove("sel");
+      if (cur && cur.b === b) {
+        if (side === "en") selL = null; else selR = null;
+        return;
+      }
+      b.classList.add("sel");
+      if (side === "en") selL = { b: b, it: it }; else selR = { b: b, it: it };
+      if (selL && selR) evaluate();
+    }
+
+    function evaluate() {
+      var a = selL, z = selR;
+      if (a.it.i === z.it.i) {
+        a.b.className = "card en ok"; z.b.className = "card zh ok";
+        selL = selR = null;
+        tipBox.className = "tip";
+        matched++;
+        status.textContent = "已配對 " + matched + " / " + total;
+        if (matched === total) setTimeout(finish, 450);
+      } else {
+        busy = true;
+        a.b.classList.add("bad"); z.b.classList.add("bad");
+        showTips([a.it.tip, z.it.tip]);
+        setTimeout(function () {
+          a.b.classList.remove("bad", "sel"); z.b.classList.remove("bad", "sel");
+          selL = selR = null; busy = false;
+        }, 650);
+      }
+    }
+
+    shuffle(items).forEach(function (it) { colL.appendChild(makeCard(it, "en")); });
+    shuffle(items).forEach(function (it) { colR.appendChild(makeCard(it, "zh")); });
+
+    function finish() {
+      var d = doneList(t.id);
+      if (d.indexOf(grp.id) < 0) { d.push(grp.id); state[t.id] = d; save(state); }
+      summary(t, grp);
+    }
+  }
+
+  /* 通關字表（照題庫順序，同字尾相鄰） */
+  function summary(t, grp) {
+    clear();
+    app.appendChild(el("h2", null, grp.name + " ✓"));
+    app.appendChild(el("p", "sub", "全部配對完成。看看這些字的拼法，有沒有規律？"));
+    var list = el("div", "list");
+    grp.items.forEach(function (it) {
+      var r = el("div", "row");
+      r.appendChild(el("b", null, it.en));
+      r.appendChild(el("span", null, it.zh));
+      if (it.tip) r.appendChild(el("small", null, "💡 " + it.tip));
+      list.appendChild(r);
+    });
+    app.appendChild(list);
+    var a = el("div", "actions");
+    var again = el("button", "btn alt", "再玩一次");
+    again.onclick = function () { round(t, grp); };
+    var next = el("button", "btn", "回選單");
+    next.onclick = function () { theme(t); };
+    a.appendChild(again); a.appendChild(next);
+    app.appendChild(a);
+  }
+
+  home();
+})();
+</script>
+</body>
+</html>
