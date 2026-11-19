@@ -85,7 +85,7 @@ button{font:inherit;color:inherit;cursor:pointer}
   function home() {
     clear();
     app.appendChild(el("h1", null, "單字複習"));
-    app.appendChild(el("p", "sub", "選一個主題開始。"));
+    app.appendChild(el("p", "sub", "選一個主題開始"));
     var g = el("div", "grid");
     window.WORDBANK.forEach(function (t) {
       var total = t.groups.length, n = doneList(t.id).length;
